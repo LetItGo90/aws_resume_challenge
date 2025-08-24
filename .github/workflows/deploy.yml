@@ -21,20 +21,20 @@ jobs:
       
       - name: Install dependencies
         run: |
-          pip install pytest boto3 moto
+          pip install pytest boto3 moto[dynamodb]
       
       - name: Create test file
         run: |
           cat > backend/test_lambda.py << 'EOF'
           import json
           import pytest
-          from moto import mock_dynamodb
           import boto3
+          from moto import mock_aws
           import sys
           sys.path.append('.')
           from lambda_function import lambda_handler
           
-          @mock_dynamodb
+          @mock_aws
           def test_lambda_handler():
               dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
               table = dynamodb.create_table(
@@ -76,14 +76,14 @@ jobs:
       - name: Sync S3 bucket
         run: |
           aws s3 sync frontend/ s3://austin-mundy-resume.com --delete
-          echo "Frontend deployed to S3"
+          echo "✅ Frontend deployed to S3"
       
       - name: Invalidate CloudFront
         run: |
           aws cloudfront create-invalidation \
             --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
             --paths "/*"
-          echo "CloudFront cache invalidated"
+          echo "✅ CloudFront cache invalidated"
 
   # Deploy Backend Lambda
   deploy-backend:
@@ -106,11 +106,11 @@ jobs:
         run: |
           cd backend
           zip function.zip lambda_function.py
-          echo "Lambda function packaged"
+          echo "📦 Lambda function packaged"
       
       - name: Update Lambda function code
         run: |
           aws lambda update-function-code \
             --function-name resume-visitor-counter \
             --zip-file fileb://backend/function.zip
-          echo "Lambda function updated"
+          echo "✅ Lambda function updated"
