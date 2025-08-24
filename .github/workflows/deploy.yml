@@ -25,7 +25,7 @@ jobs:
       
       - name: Sync S3 bucket
         run: |
-          aws s3 sync frontend/ s3://austin-mundy-resume.com --delete
+          aws s3 sync frontend/ s3://austin-mundy-resume.site --delete
           echo "Frontend deployed to S3"
       
       - name: Invalidate CloudFront
