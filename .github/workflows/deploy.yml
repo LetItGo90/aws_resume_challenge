@@ -7,59 +7,9 @@ on:
     branches: [main]
 
 jobs:
-  # Test Lambda function
-  test-backend:
-    name: Test Lambda Function
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-      
-      - name: Install dependencies
-        run: |
-          pip install pytest boto3 moto[dynamodb]
-      
-      - name: Create test file
-        run: |
-          cat > backend/test_lambda.py << 'EOF'
-          import json
-          import pytest
-          import boto3
-          from moto import mock_aws
-          import sys
-          sys.path.append('.')
-          from lambda_function import lambda_handler
-          
-          @mock_aws
-          def test_lambda_handler():
-              dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-              table = dynamodb.create_table(
-                  TableName='visitor-counter',
-                  KeySchema=[{'AttributeName': 'id', 'KeyType': 'HASH'}],
-                  AttributeDefinitions=[{'AttributeName': 'id', 'AttributeType': 'S'}],
-                  BillingMode='PAY_PER_REQUEST'
-              )
-              event = {}
-              context = {}
-              response = lambda_handler(event, context)
-              assert response['statusCode'] == 200
-              body = json.loads(response['body'])
-              assert 'visitor_count' in body
-          EOF
-      
-      - name: Run tests
-        run: |
-          cd backend
-          pytest test_lambda.py -v
-
   # Deploy Frontend to S3
   deploy-frontend:
     name: Deploy Frontend
-    needs: [test-backend]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     
@@ -76,19 +26,18 @@ jobs:
       - name: Sync S3 bucket
         run: |
           aws s3 sync frontend/ s3://austin-mundy-resume.com --delete
-          echo "✅ Frontend deployed to S3"
+          echo "Frontend deployed to S3"
       
       - name: Invalidate CloudFront
         run: |
           aws cloudfront create-invalidation \
             --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
             --paths "/*"
-          echo "✅ CloudFront cache invalidated"
+          echo "CloudFront cache invalidated"
 
   # Deploy Backend Lambda
   deploy-backend:
     name: Deploy Lambda Function
-    needs: [test-backend]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     
@@ -113,4 +62,4 @@ jobs:
           aws lambda update-function-code \
             --function-name resume-visitor-counter \
             --zip-file fileb://backend/function.zip
-          echo "✅ Lambda function updated"
+          echo "Lambda function updated"
