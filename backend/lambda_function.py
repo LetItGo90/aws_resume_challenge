@@ -1,17 +1,9 @@
 import json
 import boto3
-import os
-
-# Don't connect to DynamoDB at import time
-def get_dynamodb():
-    if os.environ.get('AWS_SAM_LOCAL'):
-        return boto3.resource('dynamodb', endpoint_url='http://localhost:8000')
-    else:
-        return boto3.resource('dynamodb')
 
 def lambda_handler(event, context):
-    # Connect to DynamoDB inside the function
-    dynamodb = get_dynamodb()
+    # MUST specify region for DynamoDB
+    dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
     table = dynamodb.Table('visitor-counter')
     
     try:
